@@ -1,0 +1,26 @@
+MEU ESTOQUE — Farinha e Juçara
+
+Conteúdo:
+- index.html: aplicativo
+- manifest.json: configuração de instalação
+- sw.js: cache para funcionamento offline
+- icon.svg: ícone
+
+COMO USAR NO IPHONE:
+1. Este pacote é um aplicativo web instalável (PWA), não um app da App Store.
+2. Para instalar e habilitar o modo offline, publique os arquivos em uma hospedagem HTTPS.
+3. Abra o endereço no Safari do iPhone.
+4. Toque em Compartilhar > Adicionar à Tela de Início.
+5. Abra pelo ícone criado. Depois da primeira carga, a interface fica disponível offline.
+
+DADOS:
+- Os registros ficam armazenados localmente no navegador/aplicativo do aparelho.
+- Use Relatórios > Exportar backup regularmente.
+- Para restaurar, use Importar backup.
+
+OBSERVAÇÕES:
+- A farinha e a juçara são controladas em kg e litros.
+- O custo da entrada é lançado como despesa; registre frete/combustível separadamente em Relatórios.
+- Preços de venda são informados em cada venda.
+- O controle de saldo devedor funciona por cliente e aceita recebimentos parciais.
+- Esta é uma primeira versão funcional; não há sincronização automática entre aparelhos.
