@@ -78,8 +78,18 @@ hr{border:0;border-top:1px solid var(--line);margin:12px 0}
 </section>
 
 <section id="reports" class="hidden">
- <div class="card"><h2>Resumo financeiro</h2><div class="item"><span>Faturamento total</span><strong id="rSales">R$ 0,00</strong></div><div class="item"><span>Recebido</span><strong id="rPaid">R$ 0,00</strong></div><div class="item"><span>Contas a receber</span><strong id="rDebt">R$ 0,00</strong></div><div class="item"><span>Despesas lançadas</span><strong id="rExpenses">R$ 0,00</strong></div></div>
+ <div class="card"><h2>Resumo financeiro</h2><div class="item"><span>Faturamento total</span><strong id="rSales">R$ 0,00</strong></div><div class="item"><span>Recebido</span><strong id="rPaid">R$ 0,00</strong></div><div class="item"><span>Contas a receber</span><strong id="rDebt">R$ 0,00</strong></div><div class="item" onclick="openExpenseHistory()" style="cursor:pointer"><span>Despesas lançadas <small style="display:block">Toque para ver o histórico</small></span><strong id="rExpenses">R$ 0,00</strong></div></div>
  <div class="card"><h2>Lançar despesa</h2><label>Descrição</label><input id="expenseName" placeholder="Ex.: combustível, frete"><label>Valor (R$)</label><input id="expenseValue" type="number" min="0" step="0.01"><button style="width:100%" onclick="addExpense()">Salvar despesa</button></div>
+ <div class="card hidden" id="expenseHistoryCard">
+<h2>Histórico de despesas</h2>
+<label>Filtrar por mês</label>
+<input id="expenseMonth" type="month" onchange="renderExpenseHistory()">
+<div class="item">
+<span>Total no período</span>
+<strong id="expenseHistoryTotal">R$ 0,00</strong>
+</div>
+<div id="expenseHistoryList" class="empty">Nenhuma despesa neste mês.</div>
+</div>
  <div class="card"><h2>Backup dos dados</h2><p class="small">Exporte regularmente uma cópia para guardar seus registros. O arquivo pode ser importado neste mesmo aplicativo.</p><div class="actions"><button onclick="backup()">Exportar backup</button><button class="secondary" onclick="document.getElementById('restoreFile').click()">Importar backup</button></div><input id="restoreFile" type="file" accept="application/json" class="hidden" onchange="restore(event)"></div>
  <div class="card"><h2>Histórico de vendas</h2><div id="salesHistory" class="empty">Nenhuma venda.</div></div>
 </section>
@@ -131,7 +141,27 @@ function saveSale(){let p=document.getElementById('saleProduct').value,q=+docume
 function addCustomer(){let name=document.getElementById('customerName').value.trim(),phone=document.getElementById('customerPhone').value.trim();if(!name){toast('Informe o nome do cliente.');return}db.customers.push({id:Date.now().toString(),name,phone});persist();document.getElementById('customerName').value='';document.getElementById('customerPhone').value='';toast('Cliente cadastrado!')}
 function receive(id){let c=db.customers.find(x=>x.id===id),open=db.sales.filter(s=>s.customer===id&&s.balance>0);if(!open.length){toast('Este cliente não tem saldo em aberto.');return}let total=open.reduce((a,s)=>a+s.balance,0);let raw=prompt('Saldo de '+c.name+': '+money(total)+'\\nQuanto recebeu agora?');if(raw===null)return;let val=Number(raw.replace(',','.'));if(!(val>0)||val>total){toast('Valor inválido.');return}let left=val;for(let s of open){let v=Math.min(left,s.balance);s.balance-=v;s.paid+=v;left-=v;if(left<=0)break}db.movements.push({date:new Date().toISOString(),text:'Recebimento de '+c.name,value:money(val)});persist();toast('Pagamento registrado!')}
 function addExpense(){let name=document.getElementById('expenseName').value.trim(),value=+document.getElementById('expenseValue').value;if(!name||!(value>0)){toast('Informe descrição e valor.');return}db.expenses.push({name,value,date:new Date().toISOString()});db.movements.push({date:new Date().toISOString(),text:'Despesa: '+name,value:money(value)});persist();document.getElementById('expenseName').value='';document.getElementById('expenseValue').value='';toast('Despesa registrada!')}
-function backup(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-meu-estoque-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
+function openExpenseHistory(){
+ let card=document.getElementById('expenseHistoryCard');
+ card.classList.remove('hidden');
+ let month=document.getElementById('expenseMonth');
+ if(!month.value) month.value=new Date().toISOString().slice(0,7);
+ renderExpenseHistory();
+ card.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function renderExpenseHistory(){
+ let month=document.getElementById('expenseMonth').value;
+ let items=db.expenses.filter(e=>!month||(e.date||'').slice(0,7)===month).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+ let total=items.reduce((a,e)=>a+Number(e.value||0),0);
+
+ document.getElementById('expenseHistoryTotal').textContent=money(total);
+
+ document.getElementById('expenseHistoryList').innerHTML=items.length
+ ?items.map(e=>'<div class="item"><span><b>'+esc(e.name||'Despesa')+'</b><div class="small">'+(e.date?new Date(e.date).toLocaleString('pt-BR'):'Data não informada')+'</div></span><strong>'+money(e.value)+'</strong></div>').join('')
+ :'Nenhuma despesa neste mês.';
+}
+ function backup(){let blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='backup-meu-estoque-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href)}
 function restore(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{let x=JSON.parse(r.result);if(!x.stock||!Array.isArray(x.sales)||!Array.isArray(x.customers))throw 0;if(confirm('Importar backup e substituir os dados atuais?')){db=x;persist();toast('Backup importado!')}}catch(_){toast('Arquivo de backup inválido.')}};r.readAsText(f);e.target.value=''}
 if('serviceWorker' in navigator && location.protocol!=='file:'){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
 render();
